@@ -1,0 +1,24 @@
+{
+  "name": "tim-bim-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-browser BIM graph platform for collaborative building design",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@tim/web & npm run dev --workspace=@tim/api",
+    "dev:web": "npm run dev --workspace=@tim/web",
+    "dev:api": "npm run dev --workspace=@tim/api",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT"
+}
