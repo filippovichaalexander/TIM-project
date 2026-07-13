@@ -1,5 +1,7 @@
+/// <reference types="@webgpu/types" />
+
 import type { BuildingElement } from '@tim/shared';
-import { detectCollisionsCPU, type CollisionPair } from './cpu-collision.js';
+import type { CollisionPair } from './cpu-collision.js';
 
 const COLLISION_SHADER = /* wgsl */ `
 struct BoundingBox {

@@ -16,7 +16,7 @@ export function previewMerge(
   sourceElements: BuildingElement[],
   targetElements: BuildingElement[],
   sourceBranch: Branch,
-  targetBranch: Branch,
+  _targetBranch: Branch,
   collisionPairs: CollisionPair[]
 ): MergePreview {
   const targetIds = new Set(targetElements.map(e => e.id));

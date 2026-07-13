@@ -19,6 +19,7 @@
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
     "@tsconfig/svelte": "^5.0.4",
     "@types/three": "^0.177.0",
+    "@webgpu/types": "^0.1.60",
     "svelte": "^5.33.14",
     "svelte-check": "^4.2.1",
     "typescript": "^5.8.3",

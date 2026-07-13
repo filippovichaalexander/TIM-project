@@ -1,6 +1,7 @@
 import type {
-  ApiResponse, Branch, BuildingElement, Commit, Family, MergePreview, MergeRequest, Project,
+  ApiResponse, Branch, BuildingElement, Commit, Family, MergeRequest, Project,
 } from '@tim/shared';
+import type { MergePreview } from '@tim/core';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 

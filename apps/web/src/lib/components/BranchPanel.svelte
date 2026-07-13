@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { Branch, MergePreview, MergeRequest } from '@tim/shared';
+  import type { Branch, MergeRequest } from '@tim/shared';
+  import type { MergePreview } from '@tim/core';
   import { api } from '../api.js';
 
   interface Props {

@@ -4,11 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "types": ["@webgpu/types"]
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte"],
-  "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/core" }
-  ]
+  "include": ["src/**/*.ts", "src/**/*.svelte"]
 }

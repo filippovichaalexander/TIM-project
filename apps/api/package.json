@@ -23,6 +23,7 @@
     "@types/node": "^22.15.21",
     "@types/pg": "^8.15.2",
     "@types/uuid": "^10.0.0",
+    "@webgpu/types": "^0.1.60",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

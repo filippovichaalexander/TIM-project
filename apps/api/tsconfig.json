@@ -4,11 +4,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "types": ["@webgpu/types"]
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/core" }
-  ]
+  "include": ["src/**/*"]
 }

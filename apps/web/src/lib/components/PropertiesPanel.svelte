@@ -16,35 +16,35 @@
   {#if element}
     <div class="content">
       <div class="field">
-        <label>Name</label>
+        <span class="field-label">Name</span>
         <span>{element.name}</span>
       </div>
       <div class="field">
-        <label>Category</label>
+        <span class="field-label">Category</span>
         <span class="cat-badge">{element.category}</span>
       </div>
       <div class="field">
-        <label>ID</label>
+        <span class="field-label">ID</span>
         <span class="mono">{element.id}</span>
       </div>
 
       <h4>Parameters</h4>
       {#each Object.entries(element.parameters) as [key, param]}
         <div class="field">
-          <label>{key}{param.unit ? ` (${param.unit})` : ''}</label>
+          <span class="field-label">{key}{param.unit ? ` (${param.unit})` : ''}</span>
           <span>{param.value}</span>
         </div>
       {/each}
 
       <h4>Bounding Box</h4>
       <div class="field">
-        <label>Min</label>
+        <span class="field-label">Min</span>
         <span class="mono">
           ({element.bbox.min.x.toFixed(2)}, {element.bbox.min.y.toFixed(2)}, {element.bbox.min.z.toFixed(2)})
         </span>
       </div>
       <div class="field">
-        <label>Max</label>
+        <span class="field-label">Max</span>
         <span class="mono">
           ({element.bbox.max.x.toFixed(2)}, {element.bbox.max.y.toFixed(2)}, {element.bbox.max.z.toFixed(2)})
         </span>
@@ -83,7 +83,7 @@
     padding: 4px 0;
     font-size: 13px;
   }
-  label { color: var(--text-secondary); }
+  .field-label { color: var(--text-secondary); }
   .mono { font-family: var(--font-mono); font-size: 11px; }
   .cat-badge {
     background: var(--bg-tertiary);
