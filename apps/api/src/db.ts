@@ -24,8 +24,8 @@ export async function initDb(): Promise<void> {
 // ── In-memory seed data (persisted to PG when tables exist) ──
 
 const users: User[] = [
-  { id: 'user-lead', email: 'lead@tim.bim', name: 'Lead Architect', role: 'lead_architect', createdAt: new Date().toISOString() },
-  { id: 'user-arch-1', email: 'arch1@tim.bim', name: 'Anna Petrova', role: 'architect', createdAt: new Date().toISOString() },
+  { id: 'user-1', email: 'user@tim.bim', name: 'User', role: 'architect', createdAt: new Date().toISOString() },
+  { id: 'user-approver', email: 'approver@tim.bim', name: 'Approval User', role: 'approval_user', createdAt: new Date().toISOString() },
 ];
 
 const projects: Project[] = [
@@ -33,7 +33,7 @@ const projects: Project[] = [
     id: 'proj-demo',
     name: 'Office Building Alpha',
     description: 'Demo BIM project with branch workflow',
-    ownerId: 'user-lead',
+    ownerId: 'user-1',
     mainBranchId: 'branch-main',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -45,7 +45,7 @@ const branches: Branch[] = [
     id: 'branch-main',
     projectId: 'proj-demo',
     name: 'main',
-    authorId: 'user-lead',
+    authorId: 'user-1',
     isMain: true,
     status: 'active',
     createdAt: new Date().toISOString(),
@@ -54,9 +54,9 @@ const branches: Branch[] = [
   {
     id: 'branch-anna',
     projectId: 'proj-demo',
-    name: 'anna/west-wing',
+    name: 'feature/west-wing',
     parentBranchId: 'branch-main',
-    authorId: 'user-arch-1',
+    authorId: 'user-1',
     isMain: false,
     status: 'active',
     createdAt: new Date().toISOString(),

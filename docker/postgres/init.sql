@@ -92,17 +92,17 @@ CREATE TABLE IF NOT EXISTS families (
 
 -- Seed demo data
 INSERT INTO users (id, email, name, role) VALUES
-  ('user-lead', 'lead@tim.bim', 'Lead Architect', 'lead_architect'),
-  ('user-arch-1', 'arch1@tim.bim', 'Anna Petrova', 'architect')
+  ('user-1', 'user@tim.bim', 'User', 'architect'),
+  ('user-approver', 'approver@tim.bim', 'Approval User', 'approval_user')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO projects (id, name, description, owner_id, main_branch_id) VALUES
-  ('proj-demo', 'Office Building Alpha', 'Demo BIM project with branch workflow', 'user-lead', 'branch-main')
+  ('proj-demo', 'Office Building Alpha', 'Demo BIM project with branch workflow', 'user-1', 'branch-main')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO branches (id, project_id, name, author_id, is_main, status) VALUES
-  ('branch-main', 'proj-demo', 'main', 'user-lead', TRUE, 'active'),
-  ('branch-anna', 'proj-demo', 'anna/west-wing', 'user-arch-1', FALSE, 'active')
+  ('branch-main', 'proj-demo', 'main', 'user-1', TRUE, 'active'),
+  ('branch-anna', 'proj-demo', 'feature/west-wing', 'user-1', FALSE, 'active')
 ON CONFLICT DO NOTHING;
 
 UPDATE branches SET parent_branch_id = 'branch-main' WHERE id = 'branch-anna';

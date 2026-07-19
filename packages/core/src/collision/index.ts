@@ -7,7 +7,13 @@ export interface CollisionDetector {
   dispose(): void;
 }
 
-export { detectCollisionsCPU, boxesIntersect, createBBoxFromDimensions } from './cpu-collision.js';
+export {
+  detectCollisionsCPU,
+  detectCrossBranchCollisions,
+  resolveCollisionByMove,
+  boxesIntersect,
+  createBBoxFromDimensions,
+} from './cpu-collision.js';
 export type { CollisionPair } from './cpu-collision.js';
 export { WebGPUCollisionDetector } from './webgpu-collision.js';
 

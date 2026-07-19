@@ -6,6 +6,7 @@ import { projectsRouter } from './routes/projects.js';
 import { branchesRouter } from './routes/branches.js';
 import { mergeRouter } from './routes/merge.js';
 import { familiesRouter } from './routes/families.js';
+import { usersRouter } from './routes/users.js';
 
 const app = express();
 const PORT = Number(process.env.API_PORT ?? 3001);
@@ -22,6 +23,7 @@ app.use('/api/projects', projectsRouter);
 app.use('/api/branches', branchesRouter);
 app.use('/api/merge', mergeRouter);
 app.use('/api/families', familiesRouter);
+app.use('/api/users', usersRouter);
 
 app.use(errorHandler);
 

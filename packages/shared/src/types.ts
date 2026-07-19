@@ -120,12 +120,19 @@ export interface Project {
   updatedAt: string;
 }
 
-/** User (architect) */
+/** User roles — only ApprovalUser may merge to main and resolve collisions */
+export type UserRole =
+  | 'lead_architect'
+  | 'architect'
+  | 'approval_user'
+  | 'viewer';
+
+/** User (architect / approver) */
 export interface User {
   id: ID;
   email: string;
   name: string;
-  role: 'lead_architect' | 'architect' | 'viewer';
+  role: UserRole;
   createdAt: string;
 }
 

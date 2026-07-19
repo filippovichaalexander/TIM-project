@@ -1,5 +1,5 @@
 import type {
-  ApiResponse, Branch, BuildingElement, Commit, Family, MergeRequest, Project,
+  ApiResponse, Branch, BuildingElement, Commit, Family, MergeRequest, Project, User,
 } from '@tim/shared';
 import type { MergePreview } from '@tim/core';
 
@@ -19,6 +19,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getUsers: () => request<User[]>('/api/users'),
+
   getProjects: () => request<Project[]>('/api/projects'),
   getProject: (id: string) => request<Project>(`/api/projects/${id}`),
   getElements: (projectId: string, branchId?: string) =>
@@ -32,7 +34,7 @@ export const api = {
 
   getMergeRequests: (projectId: string) => request<MergeRequest[]>(`/api/merge/project/${projectId}`),
   previewMerge: (sourceBranchId: string, targetBranchId: string) =>
-    request<MergePreview>('/api/merge/preview', {
+    request<MergePreview & { crossBranchCount?: number; withinMainCount?: number }>('/api/merge/preview', {
       method: 'POST',
       body: JSON.stringify({ sourceBranchId, targetBranchId }),
     }),
@@ -42,6 +44,11 @@ export const api = {
     request<MergeRequest>(`/api/merge/${id}/approve`, { method: 'POST', body: JSON.stringify({ reviewerId }) }),
   rejectMerge: (id: string, reviewerId: string) =>
     request<MergeRequest>(`/api/merge/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewerId }) }),
+  fixCollision: (mrId: string, collisionId: string, userId: string) =>
+    request<{ mergeRequest: MergeRequest; movedElement: BuildingElement }>(
+      `/api/merge/${mrId}/fix-collision`,
+      { method: 'POST', body: JSON.stringify({ collisionId, userId }) }
+    ),
 
   getFamilies: () => request<Family[]>('/api/families'),
   getFamilyLibrary: () => request<Family[]>('/api/families/library'),

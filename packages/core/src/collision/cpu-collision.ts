@@ -35,6 +35,45 @@ export function detectCollisionsCPU(
   return pairs;
 }
 
+/**
+ * Collisions between two branch sets only (merge preview).
+ * Does not flag pairs that already exist inside the target branch alone.
+ */
+export function detectCrossBranchCollisions(
+  source: BuildingElement[],
+  target: BuildingElement[]
+): CollisionPair[] {
+  const pairs: CollisionPair[] = [];
+
+  for (const a of source) {
+    for (const b of target) {
+      if (boxesIntersect(a.bbox, b.bbox)) {
+        pairs.push({ elementAId: a.id, elementBId: b.id });
+      }
+    }
+  }
+
+  return pairs;
+}
+
+/** Nudge an element bbox along X until it no longer intersects any of `others`. */
+export function resolveCollisionByMove(
+  element: BuildingElement,
+  others: BuildingElement[],
+  step = 0.25,
+  maxSteps = 80
+): BuildingElement {
+  const moved = structuredClone(element);
+  for (let i = 0; i < maxSteps; i++) {
+    const hit = others.some(o => boxesIntersect(moved.bbox, o.bbox));
+    if (!hit) break;
+    moved.bbox.min.x += step;
+    moved.bbox.max.x += step;
+  }
+  moved.updatedAt = new Date().toISOString();
+  return moved;
+}
+
 export function createBBoxFromDimensions(
   x: number, y: number, z: number,
   width: number, height: number, depth: number

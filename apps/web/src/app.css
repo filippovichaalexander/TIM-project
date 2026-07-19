@@ -62,9 +62,10 @@ button.ghost:hover {
   color: var(--text-primary);
 }
 
-button.danger {
-  background: var(--danger);
-  color: white;
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 input, select {
