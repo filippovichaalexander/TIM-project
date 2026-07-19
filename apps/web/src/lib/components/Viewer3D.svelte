@@ -10,6 +10,7 @@
     ghostElements?: BuildingElement[];
     connectionPairs?: Array<[string, string]>;
     focusRequest?: { id: string; n: number } | null;
+    regionArmed?: boolean;
     onselect?: (id: string | null) => void;
     onregionselect?: (ids: string[]) => void;
   }
@@ -21,6 +22,7 @@
     ghostElements = [],
     connectionPairs = [],
     focusRequest = null,
+    regionArmed = false,
     onselect,
     onregionselect,
   }: Props = $props();
@@ -55,6 +57,10 @@
 
   $effect(() => {
     if (viewer && focusRequest) viewer.focusElement(focusRequest.id);
+  });
+
+  $effect(() => {
+    viewer?.setRegionArmed(regionArmed);
   });
 </script>
 

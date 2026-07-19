@@ -39,6 +39,7 @@ export class BIMViewer {
   private selectionEl: HTMLDivElement;
   private isSelecting = false;
   private dragMoved = false;
+  private regionArmed = false;
   private selStart = { x: 0, y: 0 };
   private selectedRegionIds = new Set<string>();
 
@@ -90,9 +91,10 @@ export class BIMViewer {
     this.selectedMaterial = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4, metalness: 0.2 });
     this.collisionMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4, emissive: 0x440000 });
     this.ghostMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9aa7bd,
+      color: 0x4aa8ff,
+      emissive: 0x0b3a5c,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.18,
       depthWrite: false,
       roughness: 1,
     });
@@ -132,8 +134,13 @@ export class BIMViewer {
 
   // ── Region selection (Ctrl/Cmd + drag) ──
 
+  setRegionArmed(armed: boolean): void {
+    this.regionArmed = armed;
+    this.renderer.domElement.style.cursor = armed ? 'crosshair' : '';
+  }
+
   private handleMouseDown = (event: MouseEvent) => {
-    if (!(event.ctrlKey || event.metaKey)) return;
+    if (!(event.ctrlKey || event.metaKey || this.regionArmed)) return;
     event.preventDefault();
     this.isSelecting = true;
     this.dragMoved = false;
@@ -360,12 +367,23 @@ export class BIMViewer {
     this.applySelectionTint();
   }
 
+  /**
+   * Fly to an element AND rotate the view a bit so the user always gets a
+   * visible response — useful when several identical-looking elements collide.
+   */
   focusElement(id: string): void {
     const mesh = this.meshMap.get(id) ?? this.ghostMeshMap.get(id);
     if (!mesh) return;
     const target = mesh.position.clone();
-    const toCam = target.clone().add(new THREE.Vector3(7, 5, 7));
-    this.focusState = { toTarget: target, toCam, t: 0 };
+
+    // rotate the current camera offset ~22° around Y for clear feedback
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.38);
+    const dist = Math.min(Math.max(offset.length(), 8), 14);
+    offset.setLength(dist);
+    if (offset.y < 4) offset.y = 5;
+
+    this.focusState = { toTarget: target, toCam: target.clone().add(offset), t: 0 };
   }
 
   dispose(): void {

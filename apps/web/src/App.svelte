@@ -32,6 +32,7 @@
   let regionCollisionIds = $state(new Set<string>());
   let regionSelectedCount = $state(0);
   let checkingRegion = $state(false);
+  let regionMode = $state(false);
   let focusRequest = $state<{ id: string; n: number } | null>(null);
   let focusNonce = 0;
 
@@ -83,6 +84,7 @@
 
   /** Region selection from the 3D viewer: check branch vs main only inside the box. */
   async function handleRegionSelect(ids: string[]) {
+    regionMode = false; // disarm after one selection
     regionSelectedCount = ids.length;
     if (ids.length === 0) { clearRegion(); return; }
     checkingRegion = true;
@@ -231,12 +233,20 @@
       <section class="viewer-area">
         <div class="viewer-overlay">
           {#if !isMainBranch}
-            <label class="ghost-toggle" title="Semi-transparent volumes of main for spatial orientation">
+            <label class="ghost-toggle" title="Полупрозрачные объёмы main для ориентации в пространстве">
               <input type="checkbox" bind:checked={showMainGhost} />
-              <span>Показывать main (призрак)</span>
+              <span>Показывать main (голубой призрак)</span>
             </label>
           {/if}
-          <span class="hint-pill">Ctrl + рамка мышью → проверка коллизий с main</span>
+          <button
+            class="region-btn"
+            class:active={regionMode}
+            onclick={() => regionMode = !regionMode}
+            title="Нарисуйте рамку мышью, чтобы проверить коллизии с main"
+          >
+            ◫ {regionMode ? 'Рисуйте рамку…' : 'Выделить область коллизий'}
+          </button>
+          <span class="hint-pill">или Ctrl + рамка мышью</span>
         </div>
 
         <Viewer3D
@@ -246,6 +256,7 @@
           {ghostElements}
           connectionPairs={regionConnectionPairs}
           {focusRequest}
+          regionArmed={regionMode}
           onselect={(id) => { selectedId = id; }}
           onregionselect={handleRegionSelect}
         />
@@ -435,6 +446,20 @@
     border: 1px solid var(--border);
   }
   .ghost-toggle input { accent-color: var(--accent); }
+  .region-btn {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  .region-btn:hover { background: var(--bg-tertiary); }
+  .region-btn.active {
+    background: var(--warning);
+    color: #000;
+    border-color: var(--warning);
+  }
   .hint-pill {
     background: rgba(0,0,0,0.55);
     color: var(--text-secondary);
