@@ -43,8 +43,9 @@ export class BIMViewer {
   private selStart = { x: 0, y: 0 };
   private selectedRegionIds = new Set<string>();
 
-  // camera focus animation
+  // camera focus animation + per-item pose cache (stable angle per list row)
   private focusState: { toTarget: THREE.Vector3; toCam: THREE.Vector3; t: number } | null = null;
+  private focusCache = new Map<string, { target: THREE.Vector3; cam: THREE.Vector3 }>();
 
   onSelect: ((id: string | null) => void) | null = null;
   onRegionSelect: ((ids: string[]) => void) | null = null;
@@ -328,6 +329,8 @@ export class BIMViewer {
   /** Red-highlight colliding elements (branch or ghost) and draw connection lines. */
   setCollisionPairs(pairs: Array<[string, string]>): void {
     this.connectionGroup.clear();
+    // a new region result invalidates cached camera poses
+    this.focusCache.clear();
 
     const redIds = new Set<string>();
     for (const [a, b] of pairs) { redIds.add(a); redIds.add(b); }
@@ -368,22 +371,31 @@ export class BIMViewer {
   }
 
   /**
-   * Fly to an element AND rotate the view a bit so the user always gets a
-   * visible response — useful when several identical-looking elements collide.
+   * Fly to an element with a deterministic angle per list row (~12° apart), so
+   * switching between identical-looking collisions gives clear feedback and
+   * returning to a previous row restores its exact angle. Poses are cached, so
+   * re-clicking an already-visited row is instant and drift-free.
    */
-  focusElement(id: string): void {
+  focusElement(id: string, index = 0): void {
     const mesh = this.meshMap.get(id) ?? this.ghostMeshMap.get(id);
     if (!mesh) return;
+
+    const cacheKey = `${id}#${index}`;
+    const cached = this.focusCache.get(cacheKey);
+    if (cached) {
+      this.focusState = { toTarget: cached.target.clone(), toCam: cached.cam.clone(), t: 0 };
+      return;
+    }
+
     const target = mesh.position.clone();
+    // deterministic: 12° per row around a fixed base direction + fixed height/distance
+    const angle = index * (Math.PI / 180) * 12;
+    const dir = new THREE.Vector3(1, 0, 1).normalize();
+    dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).setLength(10);
+    const cam = target.clone().add(new THREE.Vector3(dir.x, 6, dir.z));
 
-    // rotate the current camera offset ~22° around Y for clear feedback
-    const offset = this.camera.position.clone().sub(this.controls.target);
-    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.38);
-    const dist = Math.min(Math.max(offset.length(), 8), 14);
-    offset.setLength(dist);
-    if (offset.y < 4) offset.y = 5;
-
-    this.focusState = { toTarget: target, toCam: target.clone().add(offset), t: 0 };
+    this.focusCache.set(cacheKey, { target: target.clone(), cam: cam.clone() });
+    this.focusState = { toTarget: target, toCam: cam, t: 0 };
   }
 
   dispose(): void {

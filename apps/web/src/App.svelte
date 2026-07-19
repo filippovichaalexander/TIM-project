@@ -33,7 +33,7 @@
   let regionSelectedCount = $state(0);
   let checkingRegion = $state(false);
   let regionMode = $state(false);
-  let focusRequest = $state<{ id: string; n: number } | null>(null);
+  let focusRequest = $state<{ id: string; index: number; n: number } | null>(null);
   let focusNonce = 0;
 
   /** Always exactly these two roles in the toolbar — never depends on API success */
@@ -112,8 +112,8 @@
     }
   }
 
-  function focusCollision(c: Collision) {
-    focusRequest = { id: c.elementAId, n: ++focusNonce };
+  function focusCollision(c: Collision, index: number) {
+    focusRequest = { id: c.elementAId, index, n: ++focusNonce };
   }
 
   async function detectCollisions() {
@@ -276,8 +276,13 @@
                 <p class="ci-ok">Коллизий с main не найдено</p>
               {:else}
                 <ul class="ci-list">
-                  {#each regionCollisions as c (c.id)}
-                    <button class="ci-row" onclick={() => focusCollision(c)} title="Приблизить камеру">
+                  {#each regionCollisions as c, i (c.id)}
+                    <button
+                      class="ci-row"
+                      class:active={focusRequest?.id === c.elementAId && focusRequest?.index === i}
+                      onclick={() => focusCollision(c, i)}
+                      title="Приблизить камеру"
+                    >
                       <span class="ci-dot"></span>
                       <span class="ci-pair">{elementName(c.elementAId)} ↔ {elementName(c.elementBId)}</span>
                     </button>
@@ -498,6 +503,7 @@
     font-family: var(--font-mono);
   }
   .ci-row:hover { background: rgba(239,68,68,0.15); }
+  .ci-row.active { background: rgba(239,68,68,0.25); outline: 1px solid var(--danger); }
   .ci-dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--danger); flex-shrink: 0;

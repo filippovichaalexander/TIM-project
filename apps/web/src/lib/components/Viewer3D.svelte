@@ -9,7 +9,7 @@
     selectedId?: string | null;
     ghostElements?: BuildingElement[];
     connectionPairs?: Array<[string, string]>;
-    focusRequest?: { id: string; n: number } | null;
+    focusRequest?: { id: string; index: number; n: number } | null;
     regionArmed?: boolean;
     onselect?: (id: string | null) => void;
     onregionselect?: (ids: string[]) => void;
@@ -56,7 +56,7 @@
   });
 
   $effect(() => {
-    if (viewer && focusRequest) viewer.focusElement(focusRequest.id);
+    if (viewer && focusRequest) viewer.focusElement(focusRequest.id, focusRequest.index);
   });
 
   $effect(() => {
