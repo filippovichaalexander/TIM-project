@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Branch, BuildingElement, Project } from '@tim/shared';
+  import type { Branch, BuildingElement, Collision, Project, User } from '@tim/shared';
   import { api } from './lib/api.js';
-  import { createCollisionDetector } from '@tim/core';
+  import { createCollisionDetector, detectCollisionsCPU } from '@tim/core';
   import Viewer3D from './lib/components/Viewer3D.svelte';
   import ModelTree from './lib/components/ModelTree.svelte';
   import PropertiesPanel from './lib/components/PropertiesPanel.svelte';
@@ -11,9 +11,12 @@
   import NodeEditor from './lib/components/NodeEditor.svelte';
 
   let projects = $state<Project[]>([]);
+  let users = $state<User[]>([]);
+  let currentUser = $state<User | null>(null);
   let activeProject = $state<Project | null>(null);
   let branches = $state<Branch[]>([]);
   let elements = $state<BuildingElement[]>([]);
+  let mainElements = $state<BuildingElement[]>([]);
   let activeBranchId = $state('');
   let selectedId = $state<string | null>(null);
   let collisionIds = $state(new Set<string>());
@@ -22,7 +25,30 @@
   let error = $state('');
   let webgpuAvailable = $state(false);
 
+  // Ghost overlay of main + region collision inspection
+  let showMainGhost = $state(false);
+  let regionCollisions = $state<Collision[]>([]);
+  let regionConnectionPairs = $state<Array<[string, string]>>([]);
+  let regionCollisionIds = $state(new Set<string>());
+  let regionSelectedCount = $state(0);
+  let checkingRegion = $state(false);
+  let focusRequest = $state<{ id: string; n: number } | null>(null);
+  let focusNonce = 0;
+
+  /** Always exactly these two roles in the toolbar — never depends on API success */
+  const ROLE_OPTIONS: User[] = [
+    { id: 'user-1', email: 'user@tim.bim', name: 'User', role: 'architect', createdAt: '' },
+    { id: 'user-approver', email: 'approver@tim.bim', name: 'Approval User', role: 'approval_user', createdAt: '' },
+  ];
+
   const selectedElement = $derived(elements.find(e => e.id === selectedId) ?? null);
+  const activeBranch = $derived(branches.find(b => b.id === activeBranchId) ?? null);
+  const isMainBranch = $derived(activeBranch?.isMain ?? true);
+  const viewerCollisionIds = $derived(new Set<string>([...collisionIds, ...regionCollisionIds]));
+  const ghostElements = $derived(showMainGhost && !isMainBranch ? mainElements : []);
+  const elementName = (id: string) =>
+    elements.find(e => e.id === id)?.name ??
+    mainElements.find(e => e.id === id)?.name ?? id;
 
   async function loadProject(project: Project) {
     activeProject = project;
@@ -34,7 +60,58 @@
   async function loadElements() {
     if (!activeProject) return;
     elements = await api.getElements(activeProject.id, activeBranchId);
+    clearRegion();
+    await loadMainElements();
     await detectCollisions();
+  }
+
+  async function loadMainElements() {
+    if (!activeProject) return;
+    if (activeBranch?.isMain) {
+      mainElements = elements;
+      return;
+    }
+    mainElements = await api.getElements(activeProject.id, activeProject.mainBranchId);
+  }
+
+  function clearRegion() {
+    regionCollisions = [];
+    regionConnectionPairs = [];
+    regionCollisionIds = new Set();
+    regionSelectedCount = 0;
+  }
+
+  /** Region selection from the 3D viewer: check branch vs main only inside the box. */
+  async function handleRegionSelect(ids: string[]) {
+    regionSelectedCount = ids.length;
+    if (ids.length === 0) { clearRegion(); return; }
+    checkingRegion = true;
+    try {
+      const idSet = new Set(ids);
+      const selected = elements.filter(e => idSet.has(e.id));
+      const others = mainElements.filter(m => !idSet.has(m.id));
+      const pool = [...selected, ...others];
+      const pairs = detectCollisionsCPU(pool)
+        .filter(p => idSet.has(p.elementAId) || idSet.has(p.elementBId));
+
+      regionConnectionPairs = pairs.map(p => [p.elementAId, p.elementBId]);
+      regionCollisionIds = new Set(pairs.flatMap(p => [p.elementAId, p.elementBId]));
+      regionCollisions = pairs.map((p, i) => ({
+        id: `region-${i}`,
+        elementAId: p.elementAId,
+        elementBId: p.elementBId,
+        branchId: activeBranchId,
+        severity: 'critical' as const,
+        resolved: false,
+        detectedAt: new Date().toISOString(),
+      }));
+    } finally {
+      checkingRegion = false;
+    }
+  }
+
+  function focusCollision(c: Collision) {
+    focusRequest = { id: c.elementAId, n: ++focusNonce };
   }
 
   async function detectCollisions() {
@@ -58,7 +135,16 @@
   }
 
   async function init() {
+    currentUser = ROLE_OPTIONS[0];
     try {
+      const apiUsers = await api.getUsers();
+      users = apiUsers.length > 0 ? apiUsers : ROLE_OPTIONS;
+      // Prefer our two switchable roles from API if present
+      const fromApi = ROLE_OPTIONS.map(opt =>
+        apiUsers.find(u => u.role === opt.role) ?? opt
+      );
+      currentUser = fromApi[0];
+      // Keep ROLE_OPTIONS ids for switch; map to API users by role when available
       projects = await api.getProjects();
       if (projects.length > 0) await loadProject(projects[0]);
       webgpuAvailable = 'gpu' in navigator;
@@ -67,6 +153,11 @@
     } finally {
       loading = false;
     }
+  }
+
+  function switchRole(role: 'architect' | 'approval_user') {
+    const fromApi = users.find(u => u.role === role);
+    currentUser = fromApi ?? ROLE_OPTIONS.find(u => u.role === role) ?? null;
   }
 
   onMount(init);
@@ -89,6 +180,27 @@
     {/if}
 
     <div class="toolbar-right">
+      <div class="role-switch" title="Switch between User and Approval User">
+        <span class="role-label">Role</span>
+        <div class="role-toggle" role="group" aria-label="Switch role">
+          <button
+            type="button"
+            class="role-btn"
+            class:active={currentUser?.role === 'architect'}
+            onclick={() => switchRole('architect')}
+          >
+            User
+          </button>
+          <button
+            type="button"
+            class="role-btn"
+            class:active={currentUser?.role === 'approval_user'}
+            onclick={() => switchRole('approval_user')}
+          >
+            Approval User
+          </button>
+        </div>
+      </div>
       {#if webgpuAvailable}
         <span class="gpu-badge" title="WebGPU available for collision detection">WebGPU</span>
       {/if}
@@ -117,12 +229,53 @@
       </aside>
 
       <section class="viewer-area">
+        <div class="viewer-overlay">
+          {#if !isMainBranch}
+            <label class="ghost-toggle" title="Semi-transparent volumes of main for spatial orientation">
+              <input type="checkbox" bind:checked={showMainGhost} />
+              <span>Показывать main (призрак)</span>
+            </label>
+          {/if}
+          <span class="hint-pill">Ctrl + рамка мышью → проверка коллизий с main</span>
+        </div>
+
         <Viewer3D
           {elements}
-          {collisionIds}
+          collisionIds={viewerCollisionIds}
           {selectedId}
+          {ghostElements}
+          connectionPairs={regionConnectionPairs}
+          {focusRequest}
           onselect={(id) => { selectedId = id; }}
+          onregionselect={handleRegionSelect}
         />
+
+        {#if regionSelectedCount > 0}
+          <div class="collision-inspector panel">
+            <div class="panel-header">
+              Коллизии в области
+              <button class="ghost close-btn" onclick={clearRegion}>✕</button>
+            </div>
+            <div class="ci-content">
+              <p class="ci-summary">
+                Выбрано объектов: {regionSelectedCount}
+                {#if checkingRegion}· проверка…{/if}
+              </p>
+              {#if regionCollisions.length === 0 && !checkingRegion}
+                <p class="ci-ok">Коллизий с main не найдено</p>
+              {:else}
+                <ul class="ci-list">
+                  {#each regionCollisions as c (c.id)}
+                    <button class="ci-row" onclick={() => focusCollision(c)} title="Приблизить камеру">
+                      <span class="ci-dot"></span>
+                      <span class="ci-pair">{elementName(c.elementAId)} ↔ {elementName(c.elementBId)}</span>
+                    </button>
+                  {/each}
+                </ul>
+              {/if}
+            </div>
+          </div>
+        {/if}
       </section>
 
       <aside class="sidebar right">
@@ -137,6 +290,7 @@
             <BranchPanel
               {branches}
               {activeBranchId}
+              {currentUser}
               projectId={activeProject?.id ?? ''}
               onbranchchange={(id) => { activeBranchId = id; loadElements(); }}
               onrefresh={loadElements}
@@ -194,7 +348,41 @@
     border-radius: 4px;
   }
 
-  .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .toolbar-right { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+  .role-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .role-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .role-toggle {
+    display: flex;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .role-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .role-btn:hover {
+    color: var(--text-primary);
+  }
+  .role-btn.active {
+    background: var(--accent);
+    color: white;
+  }
   .gpu-badge {
     font-size: 11px;
     background: rgba(34,197,94,0.15);
@@ -223,6 +411,73 @@
   }
 
   .viewer-area { position: relative; overflow: hidden; }
+
+  .viewer-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+  .ghost-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.6);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .ghost-toggle input { accent-color: var(--accent); }
+  .hint-pill {
+    background: rgba(0,0,0,0.55);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 6px;
+  }
+
+  .collision-inspector {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 260px;
+    max-height: 60%;
+    z-index: 6;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  .close-btn { padding: 0 6px; font-size: 12px; }
+  .ci-content { padding: 10px; overflow-y: auto; }
+  .ci-summary { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+  .ci-ok { font-size: 12px; color: var(--success); }
+  .ci-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .ci-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    text-align: left;
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .ci-row:hover { background: rgba(239,68,68,0.15); }
+  .ci-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--danger); flex-shrink: 0;
+  }
+  .ci-pair { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .tab-bar {
     display: flex;

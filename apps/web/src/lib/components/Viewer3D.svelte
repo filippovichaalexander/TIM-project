@@ -7,10 +7,23 @@
     elements?: BuildingElement[];
     collisionIds?: Set<string>;
     selectedId?: string | null;
+    ghostElements?: BuildingElement[];
+    connectionPairs?: Array<[string, string]>;
+    focusRequest?: { id: string; n: number } | null;
     onselect?: (id: string | null) => void;
+    onregionselect?: (ids: string[]) => void;
   }
 
-  let { elements = [], collisionIds = new Set<string>(), selectedId = null, onselect }: Props = $props();
+  let {
+    elements = [],
+    collisionIds = new Set<string>(),
+    selectedId = null,
+    ghostElements = [],
+    connectionPairs = [],
+    focusRequest = null,
+    onselect,
+    onregionselect,
+  }: Props = $props();
 
   let container: HTMLDivElement;
   let viewer: BIMViewer | null = null;
@@ -19,7 +32,9 @@
   onMount(() => {
     viewer = new BIMViewer(container);
     viewer.onSelect = (id) => onselect?.(id);
+    viewer.onRegionSelect = (ids) => onregionselect?.(ids);
     loadMs = viewer.loadElements(elements, collisionIds, selectedId);
+    viewer.setGhost(ghostElements);
   });
 
   onDestroy(() => viewer?.dispose());
@@ -28,6 +43,18 @@
     if (viewer) {
       loadMs = viewer.loadElements(elements, collisionIds, selectedId);
     }
+  });
+
+  $effect(() => {
+    viewer?.setGhost(ghostElements);
+  });
+
+  $effect(() => {
+    viewer?.setCollisionPairs(connectionPairs);
+  });
+
+  $effect(() => {
+    if (viewer && focusRequest) viewer.focusElement(focusRequest.id);
   });
 </script>
 
