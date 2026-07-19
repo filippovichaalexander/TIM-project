@@ -33,6 +33,7 @@
   let regionSelectedCount = $state(0);
   let checkingRegion = $state(false);
   let regionMode = $state(false);
+  let selectedCollision = $state<Collision | null>(null);
   let focusRequest = $state<{ id: string; index: number; n: number } | null>(null);
   let focusNonce = 0;
 
@@ -80,6 +81,7 @@
     regionConnectionPairs = [];
     regionCollisionIds = new Set();
     regionSelectedCount = 0;
+    selectedCollision = null;
   }
 
   /** Region selection from the 3D viewer: check branch vs main only inside the box. */
@@ -114,7 +116,27 @@
 
   function focusCollision(c: Collision, index: number) {
     focusRequest = { id: c.elementAId, index, n: ++focusNonce };
+    selectedCollision = c;
+    selectedId = null;
   }
+
+  function selectElement(id: string | null) {
+    selectedId = id;
+    selectedCollision = null;
+  }
+
+  const collisionA = $derived(
+    selectedCollision
+      ? (elements.find(e => e.id === selectedCollision!.elementAId)
+          ?? mainElements.find(e => e.id === selectedCollision!.elementAId) ?? null)
+      : null
+  );
+  const collisionB = $derived(
+    selectedCollision
+      ? (elements.find(e => e.id === selectedCollision!.elementBId)
+          ?? mainElements.find(e => e.id === selectedCollision!.elementBId) ?? null)
+      : null
+  );
 
   async function detectCollisions() {
     if (elements.length < 2) {
@@ -226,7 +248,7 @@
           {elements}
           {selectedId}
           {collisionIds}
-          onselect={(id) => { selectedId = id; }}
+          onselect={(id) => selectElement(id)}
         />
       </aside>
 
@@ -257,7 +279,7 @@
           connectionPairs={regionConnectionPairs}
           {focusRequest}
           regionArmed={regionMode}
-          onselect={(id) => { selectedId = id; }}
+          onselect={(id) => selectElement(id)}
           onregionselect={handleRegionSelect}
         />
 
@@ -281,7 +303,6 @@
                       class="ci-row"
                       class:active={focusRequest?.id === c.elementAId && focusRequest?.index === i}
                       onclick={() => focusCollision(c, i)}
-                      title="Приблизить камеру"
                     >
                       <span class="ci-dot"></span>
                       <span class="ci-pair">{elementName(c.elementAId)} ↔ {elementName(c.elementBId)}</span>
@@ -319,7 +340,12 @@
         </div>
 
         <div class="props-section">
-          <PropertiesPanel element={selectedElement} />
+          <PropertiesPanel
+            element={selectedElement}
+            collision={selectedCollision}
+            {collisionA}
+            {collisionB}
+          />
         </div>
       </aside>
     </main>
